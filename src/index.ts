@@ -9,15 +9,13 @@ import base58 from './encoders/base58';
 import FA12_SCHEMA from './constants/schemas/fa12';
 import FA20_SCHEMA from './constants/schemas/fa20';
 
-type curve = 'ed25519' | 'secp256k1' | 'nistp256';
-
 type keys = {
     mnemonic: string,
     path: string,
     curve: string,
-    privateKey: `${'edsk' | 'spsk' | 'p2sk'}${string}`,
-    publicKey: `${'edpk' | 'sppk' | 'p2pk'}${string}`,
-    address: `${'tz'}${string}`
+    privateKey: string,
+    publicKey: string,
+    address: string
 };
 
 type head = {
@@ -40,7 +38,7 @@ type account = {
 
 type optionParams = {
     path?: string,
-    curve?: curve,
+    curve?: string,
     password?: string
 };
 
@@ -161,7 +159,7 @@ class XTZWallet {
 
     // It's difficult to sign an operation without forging it first so we'll just do both in the
     // same function.
-    public async forgeSign(batch: {[name: string]: string}[], privateKey?: `${'edsk' | 'spsk' | 'p2sk'}${string}`): Promise<any> {
+    public async forgeSign(batch: {[name: string]: string}[], privateKey?: string): Promise<any> {
         const head: head = await explorer.getHeader(this.rpc!);
 
         const forgedBytes: string = await helpers.forgeOperation(batch, this.rpc!, head);

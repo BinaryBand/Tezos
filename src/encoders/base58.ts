@@ -4,7 +4,7 @@ import base58 from 'bs58';
 
 
 export default {
-    encode: (body: any, prefix?: any, suffix?: any): any => {
+    encode: (body: any, prefix?: any, suffix?: any): string => {
         body = Buffer.from(body);
         prefix = prefix ? Buffer.from(prefix) : Buffer.from([]);
         suffix = suffix ? Buffer.from(suffix) : Buffer.from([]);

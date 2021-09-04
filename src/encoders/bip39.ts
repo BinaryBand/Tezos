@@ -16,7 +16,7 @@ function binaryToByte(bin: string): number {
 }
 
 
-function deriveChecksumBits(entropyBuffer: any) {
+function deriveChecksumBits(entropyBuffer: any): string {
     const CS: number = (entropyBuffer.length * 8) / 32;
     const hash = SHA256(lib.WordArray.create(entropyBuffer));
     const buffer: Buffer = Buffer.from(hash.toString(enc.Hex), 'hex');

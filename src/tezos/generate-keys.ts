@@ -7,20 +7,18 @@ import blake2b from '../cryptography/blake2b';
 
 import PREFIX from '../constants/prefix.json';
 
-type curve = 'ed25519' | 'secp256k1' | 'nistp256';
-
 type keys = {
     mnemonic: string,
     path: string,
     curve: string,
-    privateKey: `${'edsk' | 'spsk' | 'p2sk'}${string}`,
-    publicKey: `${'edpk' | 'sppk' | 'p2pk'}${string}`,
-    address: `${'tz'}${string}`
+    privateKey: string,
+    publicKey: string,
+    address: string
 };
 
-type optionParams = {
+type options = {
     path?: string,
-    curve?: curve,
+    curve?: string,
     password?: string
 };
 
@@ -30,12 +28,12 @@ export function confirmMnemonic(mnemonic: string): boolean {
 }
 
 
-export function generateWallet(mnemonicLength: number=12, entropy: any, options: optionParams={}): keys {
+export function generateWallet(mnemonicLength: number=12, entropy: any, options: options={}): keys {
     const byteSize: number = mnemonicLength + (mnemonicLength / 3);
 
     // Set default options.
     const path: string = options.path === undefined ? "m/44'/1729'/0'/0'" : options.path;
-    const curve: curve = options.curve || 'ed25519';
+    const curve: string = options.curve || 'ed25519';
     const password: string = options.password || '';
     const hashedEntropy: Uint8Array = blake2b(entropy, byteSize);
 
@@ -45,10 +43,10 @@ export function generateWallet(mnemonicLength: number=12, entropy: any, options:
 
 
 // Generate a private key, public key, and Tezos address from an existing mnemonic.
-export function walletFromMnemonic(mnemonic: string='', options: optionParams={}): keys {
+export function walletFromMnemonic(mnemonic: string='', options: options={}): keys {
     // Set default options.
     const path: string = options.path === undefined ? "m/44'/1729'/0'/0'" : options.path;
-    const curve: curve = options.curve || 'ed25519';
+    const curve: string = options.curve || 'ed25519';
     const password: string = options.password || '';
 
     if (!confirmMnemonic(mnemonic)) {
@@ -59,13 +57,23 @@ export function walletFromMnemonic(mnemonic: string='', options: optionParams={}
     const seed: Buffer = mnemonicToSeed(mnemonic, password);
     const keys: { sk: Buffer, pk: Buffer } = derivePath(seed, curve, path);
 
+    const prefixes: {
+        [name: string]: any
+    } = PREFIX;
+
+    const pref: {
+        sk: number[],
+        pk: number[],
+        tz: number[]
+    } = prefixes[curve];
+
     // Convert keys into readable strings.
-    const privateKey: `${'edsk' | 'spsk' | 'p2sk'}${string}` = base58.encode(keys.sk, PREFIX[curve].sk);
-    const publicKey: `${'edpk' | 'sppk' | 'p2pk'}${string}` = base58.encode(keys.pk, PREFIX[curve].pk);
+    const privateKey: string = base58.encode(keys.sk, pref.sk);
+    const publicKey: string = base58.encode(keys.pk, pref.pk);
 
     // Use the blake2b hash on the private key to produce Tezos address.
     const blakeHash: Uint8Array = blake2b(keys.pk, 20);
-    const address: `${'tz'}${string}` = base58.encode(blakeHash, PREFIX[curve].tz);
+    const address: string = base58.encode(blakeHash, pref.tz);
 
     return { mnemonic, path, curve, privateKey, publicKey, address };
 }

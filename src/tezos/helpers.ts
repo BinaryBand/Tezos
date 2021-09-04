@@ -72,7 +72,7 @@ function forgeOperation(contents: {[name: string]: string}[], rpc: string, head?
 }
 
 
-function signOperation(forgedBytes: string, privateKey: `${'edsk' | 'spsk' | 'p2sk'}${string}`) {
+function signOperation(forgedBytes: string, privateKey: string) {
     const out: {[name: string]: any} = {
         edsk: {
             prefix: PREFIX.ed25519.sig,

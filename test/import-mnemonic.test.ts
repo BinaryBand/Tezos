@@ -1,24 +1,13 @@
 import XTZWallet from '../src/index';
 const wallet = new XTZWallet();
 
-const mnemonic: string = 'same ask pool shaft clown setup shed master more credit defense useful';
-
-type keys = {
-    mnemonic: string,
-    path: string,
-    curve: string,
-    privateKey: `${'edsk' | 'spsk' | 'p2sk'}${string}`,
-    publicKey: `${'edpk' | 'sppk' | 'p2pk'}${string}`,
-    address: `${'tz'}${string}`
-};
-
-type curve = 'ed25519' | 'secp256k1' | 'nistp256';
+const mnemonic = 'same ask pool shaft clown setup shed master more credit defense useful';
 
 
 test('Import Ed25519 With Derivation', async () => {
     wallet.importWallet(mnemonic);
 
-    const keys: keys = wallet.getKeys()!;
+    const keys = wallet.getKeys()!;
     const privateKey = keys.privateKey;
     const publicKey = keys.publicKey;
     const address = keys.address;
@@ -32,10 +21,10 @@ test('Import Ed25519 With Derivation', async () => {
 
 
 test('Import Ed25519 Without Derivation', async () => {
-    const path: string = '';
+    const path = '';
     wallet.importWallet(mnemonic, { path });
 
-    const keys: keys = wallet.getKeys()!;
+    const keys = wallet.getKeys()!;
     const privateKey = keys.privateKey;
     const publicKey = keys.publicKey;
     const address = keys.address;
@@ -49,10 +38,10 @@ test('Import Ed25519 Without Derivation', async () => {
 
 
 test('Import Ed25519 With Password', async () => {
-    const password: string = 'Jus7-A_rather.V3ry/Ideal!5ecret';
+    const password = 'Jus7-A_rather.V3ry/Ideal!5ecret';
     wallet.importWallet(mnemonic, { password });
 
-    const keys: keys = wallet.getKeys()!;
+    const keys = wallet.getKeys()!;
     const privateKey = keys.privateKey;
     const publicKey = keys.publicKey;
     const address = keys.address;
@@ -66,10 +55,10 @@ test('Import Ed25519 With Password', async () => {
 
 
 test('Import SECP256k1', async () => {
-    const curve: curve = 'secp256k1';
+    const curve = 'secp256k1';
     wallet.importWallet(mnemonic, { curve });
 
-    const keys: keys = wallet.getKeys()!;
+    const keys = wallet.getKeys()!;
     const privateKey = keys.privateKey;
     const publicKey = keys.publicKey;
     const address = keys.address;
@@ -83,10 +72,10 @@ test('Import SECP256k1', async () => {
 
 
 test('Import NIST P256', async () => {
-    const curve: curve = 'nistp256';
+    const curve = 'nistp256';
     wallet.importWallet(mnemonic, { curve });
 
-    const keys: keys = wallet.getKeys()!;
+    const keys = wallet.getKeys()!;
     const privateKey = keys.privateKey;
     const publicKey = keys.publicKey;
     const address = keys.address;

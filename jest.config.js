@@ -1,6 +1,6 @@
 module.exports = {
     "roots": [
-        "./test"
+        "./dist/test"
     ],
     "testMatch": [
         "**/__tests__/**/*.+(js)",

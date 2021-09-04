@@ -9,7 +9,7 @@ import base58 from './encoders/base58';
 import FA12_SCHEMA from './constants/schemas/fa12';
 import FA20_SCHEMA from './constants/schemas/fa20';
 
-type keys = {
+type keysType = {
     mnemonic: string,
     path: string,
     curve: string,
@@ -61,7 +61,7 @@ function query(data: any, path: (string | number)[]): string | null {
 
 class XTZWallet {
     private rpc?: string;
-    private keys?: keys;
+    private keys?: keysType;
     private constants?: constants;
 
     constructor(rpc?: string) {
@@ -81,13 +81,13 @@ class XTZWallet {
     public confirmMnemonic = confirmMnemonic;
 
     // Generate a private key, public key, and Tezos address from an existing mnemonic.
-    public importWallet(mnemonic: string='', options: optionParams={}): keys {
+    public importWallet(mnemonic: string='', options: optionParams={}): keysType {
         this.keys = walletFromMnemonic(mnemonic, options);
         return this.keys!;
     };
 
     // Create a brand new private key, public key, Tezos address, and mnemonic.
-    public createWallet(mnemonicLength: number=12, entropy: any, options: optionParams={}): keys {
+    public createWallet(mnemonicLength: number=12, entropy: any, options: optionParams={}): keysType {
         this.keys = generateWallet(mnemonicLength, entropy, options);
         return this.keys!;
     };

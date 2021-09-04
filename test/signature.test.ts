@@ -4,22 +4,13 @@ const wallet = new XTZWallet();
 const mnemonic: string = 'same ask pool shaft clown setup shed master more credit defense useful';
 const dataStub: string = '768bc4176a249ace35451e678da895e7969a2d85d8e1b5b379303547eb56a3f56c014235b2494632f8950d04bafdbc91e9fc7ef8e7abb903f3fa1af00b00c0843d00003caf2c4c9899e0d2067559bc677f9ba4fe43484a00';
 
-type keys = {
-    mnemonic: string,
-    path: string,
-    curve: string,
-    privateKey: `${'edsk' | 'spsk' | 'p2sk'}${string}`,
-    publicKey: `${'edpk' | 'sppk' | 'p2pk'}${string}`,
-    address: `${'tz'}${string}`
-};
-
 type curve = 'ed25519' | 'secp256k1' | 'nistp256';
 
 
 test('Ed25519 Signature', () => {
     wallet.importWallet(mnemonic);
 
-    const keys: keys = wallet.getKeys()!;
+    const keys = wallet.getKeys()!;
     const privateKey = keys.privateKey;
 
     const signature: string = wallet.helpers.signOperation(dataStub, privateKey);
@@ -32,7 +23,7 @@ test('SECP256k1 Signature', () => {
     const curve: curve = 'secp256k1';
     wallet.importWallet(mnemonic, { curve });
 
-    const keys: keys = wallet.getKeys()!;
+    const keys = wallet.getKeys()!;
     const privateKey = keys.privateKey;
 
     const signature: string = wallet.helpers.signOperation(dataStub, privateKey);
@@ -45,7 +36,7 @@ test('NIST P256 Signature', () => {
     const curve: curve = 'nistp256';
     wallet.importWallet(mnemonic, { curve });
 
-    const keys: keys = wallet.getKeys()!;
+    const keys = wallet.getKeys()!;
     const privateKey = keys.privateKey;
 
     const signature: string = wallet.helpers.signOperation(dataStub, privateKey);

@@ -1,11 +1,14 @@
 {
     "name": "xtz-wallet",
-    "version": "0.2",
+    "version": "0.2.1",
     "description": "A simple, virtual wallet for the Tezos blockchain.",
-    "main": "./src/index",
+    "main": "./dist/index",
+    "types": "./dist/index.d.ts",
     "dependencies": {
-        "@babel/core": "^7.15.0",
-        "@babel/preset-env": "^7.15.0",
+        "@babel/core": "^7.15.4",
+        "@babel/plugin-syntax-bigint": "^7.8.3",
+        "@babel/plugin-syntax-import-meta": "^7.10.4",
+        "@babel/preset-env": "^7.15.4",
         "@babel/preset-typescript": "^7.15.0",
         "axios": "^0.21.1",
         "babel-jest": "^27.1.0",
@@ -21,7 +24,6 @@
         "@types/crypto-js": "^4.0.2",
         "@types/elliptic": "^6.4.13",
         "@types/jest": "^27.0.1",
-        "@types/mocha": "^9.0.0",
         "@types/node": "^16.7.2",
         "jest": "^27.1.0",
         "ts-jest": "^27.0.5",
@@ -34,7 +36,7 @@
         "ed25519"
     ],
     "scripts": {
-        "start": "tsc && node src/index.js",
+        "start": "tsc",
         "test": "tsc && jest"
     },
     "author": "Shane Davenport",

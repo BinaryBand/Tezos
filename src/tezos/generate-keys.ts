@@ -7,7 +7,7 @@ import blake2b from '../cryptography/blake2b';
 
 import PREFIX from '../constants/prefix.json';
 
-type keys = {
+type keysType = {
     mnemonic: string,
     path: string,
     curve: string,
@@ -28,7 +28,7 @@ export function confirmMnemonic(mnemonic: string): boolean {
 }
 
 
-export function generateWallet(mnemonicLength: number=12, entropy: any, options: options={}): keys {
+export function generateWallet(mnemonicLength: number=12, entropy: any, options: options={}): keysType {
     const byteSize: number = mnemonicLength + (mnemonicLength / 3);
 
     // Set default options.
@@ -43,7 +43,7 @@ export function generateWallet(mnemonicLength: number=12, entropy: any, options:
 
 
 // Generate a private key, public key, and Tezos address from an existing mnemonic.
-export function walletFromMnemonic(mnemonic: string='', options: options={}): keys {
+export function walletFromMnemonic(mnemonic: string='', options: options={}): keysType {
     // Set default options.
     const path: string = options.path === undefined ? "m/44'/1729'/0'/0'" : options.path;
     const curve: string = options.curve || 'ed25519';

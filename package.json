@@ -1,6 +1,6 @@
 {
     "name": "xtz-wallet",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "description": "A simple, virtual wallet for the Tezos blockchain.",
     "main": "./dist/index",
     "types": "./dist/index.d.ts",
@@ -36,7 +36,7 @@
         "ed25519"
     ],
     "scripts": {
-        "start": "tsc",
+        "start": "tsc && node ./dist/example",
         "test": "tsc && jest"
     },
     "author": "Shane Davenport",

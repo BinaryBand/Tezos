@@ -1,16 +1,17 @@
-import XTZWallet from '../src/index';
-const wallet = new XTZWallet();
+import * as XTZWallet from '../src/index';
 
-const mnemonic = 'same ask pool shaft clown setup shed master more credit defense useful';
+const mnemonic: string = 'same ask pool shaft clown setup shed master more credit defense useful';
+
+type Curve = 'ed25519' | 'secp256k1' | 'nistp256';
 
 
 test('Import Ed25519 With Derivation', async () => {
-    wallet.importWallet(mnemonic);
+    const path: string = "m/44'/1729'/0'/0'";
+    const wallet: XTZWallet.Wallet = XTZWallet.importWallet(mnemonic, { path });
 
-    const keys = wallet.getKeys()!;
-    const privateKey = keys.privateKey;
-    const publicKey = keys.publicKey;
-    const address = keys.address;
+    const privateKey: string = wallet.getSecretKey();
+    const publicKey: string = wallet.getPublicKey();
+    const address: string = wallet.getAddress();
 
     expect({ privateKey, publicKey, address }).toEqual({
         privateKey: 'edskRruPv8JtGnZ3DpSeB2QsHeBHrWAa5LDSVhnTXYyhC4bPZkarGjkSReuJNn7mFPHRUMfDdnUQus4iSMMbEpqXjjY6Bd3tSJ',
@@ -21,13 +22,11 @@ test('Import Ed25519 With Derivation', async () => {
 
 
 test('Import Ed25519 Without Derivation', async () => {
-    const path = '';
-    wallet.importWallet(mnemonic, { path });
+    const wallet: XTZWallet.Wallet = XTZWallet.importWallet(mnemonic);
 
-    const keys = wallet.getKeys()!;
-    const privateKey = keys.privateKey;
-    const publicKey = keys.publicKey;
-    const address = keys.address;
+    const privateKey: string = wallet.getSecretKey();
+    const publicKey: string = wallet.getPublicKey();
+    const address: string = wallet.getAddress();
 
     expect({ privateKey, publicKey, address }).toEqual({
         privateKey: 'edskRt2F9fMK7x2yXYuWyLz35EqiAETk3LY65bocWGDheyavTdAjCoqSBpPFhdFsjSAK4q8w9ogqq8h8vUL2WdTft2eRPPMSrw',
@@ -39,12 +38,12 @@ test('Import Ed25519 Without Derivation', async () => {
 
 test('Import Ed25519 With Password', async () => {
     const password = 'Jus7-A_rather.V3ry/Ideal!5ecret';
-    wallet.importWallet(mnemonic, { password });
+    const path: string = "m/44'/1729'/0'/0'";
+    const wallet: XTZWallet.Wallet = XTZWallet.importWallet(mnemonic, { password, path });
 
-    const keys = wallet.getKeys()!;
-    const privateKey = keys.privateKey;
-    const publicKey = keys.publicKey;
-    const address = keys.address;
+    const privateKey: string = wallet.getSecretKey();
+    const publicKey: string = wallet.getPublicKey();
+    const address: string = wallet.getAddress();
 
     expect({ privateKey, publicKey, address }).toEqual({
         privateKey: 'edskRtA3JcKmckVurZrfhRe5UHQpLxA3Fz22Df8ARSJbYEcMBDLptS8uxThq5r4rhFCweF6SVTse6QUii1a6pVVJfiCpp9zy6M',
@@ -55,13 +54,13 @@ test('Import Ed25519 With Password', async () => {
 
 
 test('Import SECP256k1', async () => {
-    const curve = 'secp256k1';
-    wallet.importWallet(mnemonic, { curve });
+    const path: string = "m/44'/1729'/0'/0'";
+    const curve: Curve = 'secp256k1';
+    const wallet: XTZWallet.Wallet = XTZWallet.importWallet(mnemonic, { path, curve });
 
-    const keys = wallet.getKeys()!;
-    const privateKey = keys.privateKey;
-    const publicKey = keys.publicKey;
-    const address = keys.address;
+    const privateKey: string = wallet.getSecretKey();
+    const publicKey: string = wallet.getPublicKey();
+    const address: string = wallet.getAddress();
 
     expect({ privateKey, publicKey, address }).toEqual({
         privateKey: 'spsk2nhWNL18bo6tKG1GFrwb32ss2Ybo9QaJYPSkJrK8t5Zn7NMYpQ',
@@ -72,13 +71,13 @@ test('Import SECP256k1', async () => {
 
 
 test('Import NIST P256', async () => {
-    const curve = 'nistp256';
-    wallet.importWallet(mnemonic, { curve });
+    const path: string = "m/44'/1729'/0'/0'";
+    const curve: Curve = 'nistp256';
+    const wallet: XTZWallet.Wallet = XTZWallet.importWallet(mnemonic, { path, curve });
 
-    const keys = wallet.getKeys()!;
-    const privateKey = keys.privateKey;
-    const publicKey = keys.publicKey;
-    const address = keys.address;
+    const privateKey: string = wallet.getSecretKey();
+    const publicKey: string = wallet.getPublicKey();
+    const address: string = wallet.getAddress();
 
     expect({ privateKey, publicKey, address }).toEqual({
         privateKey: 'p2sk3DH7TyC9QrkrcL3KvoxPKbcFVeV1MkRQ19yzgAqMj45UcfajzL',

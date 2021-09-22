@@ -1,86 +1,98 @@
 import { Buffer } from 'buffer';
-import { HmacSHA512, lib, enc } from 'crypto-js';
+import * as crypto from './crypto-wrapper';
 
-import ed25519 from './ed25519';
-import { secp256k1, nistp256 } from './ellipticCurves';
+import * as ed25519 from './ed25519';
+import { secp256k1, nistp256 } from './elliptic-curves';
 
 
-const SCHEMAS: any = {
+const hardenedOffset: number = 0x80000000;
+type curves = 'ed25519' | 'secp256k1' | 'nistp256';
+
+
+interface Curve {
+    secret: string;
+    keyPair: (sk: Uint8Array) => Uint8Array;
+    tweak?: (sk: Uint8Array, tweak: Uint8Array) => Uint8Array;
+};
+
+
+const SCHEMAS: Record<curves, Curve> = {
     ed25519: {
         secret: 'ed25519 seed',
-        hardenedOffset: 0x80000000,
         keyPair: ed25519.publicKeyCreate
     },
 
     secp256k1: {
         secret: 'Bitcoin seed',
-        hardenedOffset: 0x80000000,
-        tweak: secp256k1.privateKeyTweakAdd,
-        keyPair: secp256k1.publicKeyCreate
+        keyPair: secp256k1.publicKeyCreate,
+        tweak: secp256k1.privateKeyTweakAdd
     },
 
     nistp256: {
         secret: 'nistp256 seed',
-        hardenedOffset: 0x80000000,
-        tweak: nistp256.privateKeyTweakAdd,
-        keyPair: nistp256.publicKeyCreate
+        keyPair: nistp256.publicKeyCreate,
+        tweak: nistp256.privateKeyTweakAdd
     }
 };
 
 
-function cryptoHmac(m: any, n: any) {
-    let seedArray = lib.WordArray.create(m);
-    let secretArray = lib.WordArray.create(n);
-    let hash = HmacSHA512(seedArray, secretArray);
-    return Buffer.from(hash.toString(enc.Hex), 'hex');
-}
-
-
-const derivePath = (seed: any, schema: any, path: any) => {
-    let masterSecret = cryptoHmac(seed, Buffer.from(schema.secret, 'utf-8'));
-
-    let sk = masterSecret.slice(0, 32);
-    let pk: any = null;
-    let chainCode = masterSecret.slice(32);
-
-    path.split('/').slice(1).forEach((segment: any) => {
-        let hardened = (segment.length > 1) && (segment[segment.length - 1] === "'");
-        let index = parseInt(segment, 10) + (hardened ? schema.hardenedOffset : 0);
-    
-        let isHardened = index >= schema.hardenedOffset;
-        let indexBuffer = Buffer.allocUnsafe(4);
-        indexBuffer.writeUInt32BE(index, 0);
-
-        let data = isHardened
-            ? Buffer.concat([Buffer.alloc(1, 0), sk, indexBuffer])
-            : Buffer.concat([pk, indexBuffer]);
-    
-        let I = cryptoHmac(data, chainCode);
-        let IL = I.slice(0, 32);
-
-        sk = schema.tweak
-            ? Buffer.from(schema.tweak(Buffer.from(sk), IL))
-            : I.slice(0, 32);
-
-        pk = Buffer.from(schema.keyPair(sk, true));
-        chainCode = I.slice(32);
-    });
-
-    return { sk, pk };
+interface Keypair {
+    sk: Uint8Array;
+    pk: Uint8Array;
 };
 
 
-function keyPair(seed: any, schemaKey: any, path: any) {
-    let schema: any = SCHEMAS[schemaKey];
+function derive(seed: Uint8Array, schema: Curve, path: string): Keypair {
+    const seedBuffer: Buffer = Buffer.from(schema.secret, 'utf-8');
+    const masterSecret: Uint8Array = crypto.cryptoHmac(seed, seedBuffer, 'sha512');
 
-    let { sk, pk } = path === ''
-        ? { sk: seed.slice(0, 32), pk: schema.keyPair(seed.slice(0, 32)) }
-        : derivePath(seed, schema, path);
+    let sk: Uint8Array = masterSecret.slice(0, 32);
+    let pk: Uint8Array | undefined;
+    let chainCode: Uint8Array = masterSecret.slice(32);
 
-    if (schemaKey === 'ed25519') sk = Buffer.concat([sk, pk]);
+    path.split('/').slice(1).forEach((segment: string): void => {
+        const hardened: boolean = (segment.length > 1) && (segment[segment.length - 1] === "'");
+        const index: number = parseInt(segment, 10) + (hardened ? hardenedOffset : 0);
+        const isHardened: boolean = index >= hardenedOffset;
 
-    return { sk, pk };
+        const indexBuffer: Buffer = Buffer.allocUnsafe(4);
+        indexBuffer.writeUInt32BE(index, 0);
+
+        const data: Uint8Array = isHardened
+            ? Buffer.concat([new Uint8Array([0]), sk, indexBuffer])
+            : Buffer.concat([pk!, indexBuffer]);
+    
+        const secret: Uint8Array = crypto.cryptoHmac(data, chainCode, 'sha512');
+        const tweak: Uint8Array = secret.slice(0, 32);
+
+        sk = schema.tweak !== undefined
+            ? schema.tweak(sk, tweak)
+            : tweak;
+
+        pk = schema.keyPair(sk);
+        chainCode = secret.slice(32);
+    });
+
+    return { sk, pk: pk! };
+};
+
+
+function deriveKeypair(seed: Uint8Array, schemaKey: curves, path?: string): Keypair {
+    const schema: Curve = SCHEMAS[schemaKey];
+
+    const keyPair: Keypair = path === undefined
+        ? ({ 
+            sk: seed.slice(0, 32),
+            pk: schema.keyPair(seed.slice(0, 32))
+        })
+        : derive(seed, schema, path);
+
+    if (schemaKey === 'ed25519') {
+        keyPair.sk = Buffer.concat([keyPair.sk, keyPair.pk]);
+    }
+
+    return keyPair;
 }
 
 
-export default keyPair;
+export default deriveKeypair;

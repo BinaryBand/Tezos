@@ -1,147 +1,182 @@
-import { Buffer } from 'buffer';
-
-import helpers from './helpers';
-
-import SCHEMAS from '../constants/schemas/operations';
 import FA12_SCHEMA from '../constants/schemas/fa12';
 import FA20_SCHEMA from '../constants/schemas/fa20';
 
-const MINIMAL_FEE = 100;
-const MINIMAL_NANOTEZ_PER_BYTE = 1;
-const MINIMAL_NANOTEZ_PER_GAS_UNIT = 0.1;
+export type Operation = Reveal | Delegation | Transaction;
 
-type head = {
-    chain_id: string,
-    hash: string,
-    protocol: string
-};
 
-type constants = {
-    origination_size: string,
-    cost_per_byte: string,
-    minimal_block_delay: string
-};
-
-type account = {
-    balance: string,
-    counter: string,
-    delegate?: string
+const DEFAULTS = {
+    fee: '0',
+    counter: '0',
+    gas_limit: '1040000',
+    storage_limit: '60000'
 };
 
 
-export async function estimateFee(operations: {[name: string]: string}[], rpc: string, head: head, tip: number) {
-    const forgedBytes: string = await helpers.forgeOperation(operations, rpc, head);
+export interface RevealArgs {
+    source: string;
+    fee?: string | number;
+    counter?: string | number;
+    gas_limit?: string | number;
+    storage_limit?: string | number;
+    public_key: string;
+};
 
-    const operationSize: number = Buffer.from(forgedBytes, 'hex').length;
-    let totalGas = 0;
-    operations.forEach((operation) => {
-        totalGas += parseInt(operation.gas_limit, 10);
-    });
 
-    const fee = MINIMAL_FEE + totalGas + MINIMAL_NANOTEZ_PER_BYTE * operationSize + Math.ceil(MINIMAL_NANOTEZ_PER_GAS_UNIT * totalGas);
-    operations[0] = { ...operations[0], fee: fee.toString() }
+export interface Reveal {
+    kind: 'reveal';
+    source: string;
+    fee: string;
+    counter: string;
+    gas_limit: string;
+    storage_limit: string;
+    public_key: string;
+};
 
-    return operations;
+
+/**
+ * Reveals the user's public key to the blockchain. This should be the first operation
+ * performed on any new wallet.
+ * @param source The user's public Tezos address.
+ * @param publicKey 
+ * @returns 
+ */
+export function reveal(args: RevealArgs): Reveal {
+    return {
+        kind: 'reveal',
+        source: args.source,
+        fee: args.fee?.toString() || DEFAULTS.fee,
+        counter: args.counter?.toString() || DEFAULTS.counter,
+        gas_limit: args.gas_limit?.toString() || DEFAULTS.gas_limit,
+        storage_limit: args.storage_limit?.toString() || DEFAULTS.storage_limit,
+        public_key: args.public_key
+    };
 }
 
 
-export function getEstimates(metadata: any, constants: constants) {
-    const GAS_BUFFER: number = 100;
-
-    return metadata.map((operation: {[name: string]: { operation_result: any }}) => {
-        const operationResult = operation.metadata.operation_result;
-
-        const errors = operationResult.errors;
-        if (errors) throw(new Error(JSON.stringify(errors)));
-
-        const gasLimit: number = parseInt(operationResult.consumed_gas, 10) + GAS_BUFFER;
-        let storageLimit: number = parseInt(operationResult.storage_limit || 0, 10);
-        storageLimit += operationResult.allocated_destination_contract ?
-            parseInt(constants.origination_size, 10) : 0;
-
-        return {
-            gas_limit: gasLimit.toString(),
-            storage_limit: storageLimit.toString()
-        };
-    });
+export interface DelegationArgs {
+    source: string;
+    fee?: string | number;
+    counter?: string | number;
+    gas_limit?: string | number;
+    storage_limit?: string | number;
+    delegate?: string;
 }
 
 
-export function buildOperation(operation: {[name: string]: string}, account: account, constants: constants, index: number) {
-    const metadata = { account, constants, index };
-
-    const finalOperation: {[name: string]: string} = {};
-    const schema: any = SCHEMAS[operation.kind];
-
-    Object.keys(schema).forEach((key: string) => {
-        if (key in operation) {
-            const value: string = operation[key];
-            finalOperation[key] = value;
-        }
-
-        else {
-            const schemaValue = schema[key];
-
-            switch (typeof (schemaValue)) {
-                case 'function':
-                    const defaultValue = schemaValue(metadata);
-                    finalOperation[key] = defaultValue;
-                    break;
-                case 'string':
-                    finalOperation[key] = schemaValue;
-                    break;
-                default:
-                    return new Error(`${key} value is undefined or invalid.`);
-            }
-        }
-    });
-
-    return finalOperation;
+export interface Delegation {
+    kind: 'delegation';
+    source: string;
+    fee: string;
+    counter: string;
+    gas_limit: string;
+    storage_limit: string;
+    delegate?: string;
 }
 
 
-export const tezosOperations = {
-    // Reveals the user's public key to the blockchain. This should be the first operation
-    // performed on any new wallet.
-    reveal: (source: string, publicKey: string) => {
-        return {
-            kind: 'reveal',
-            source,
-            public_key: publicKey
-        };
-    },
+/**
+ * 
+ * @param source 
+ * @param delegate 
+ * @returns 
+ */
+export function delegation(args: DelegationArgs): Delegation {
+    return {
+        kind: 'delegation',
+        source: args.source,
+        fee: args.fee?.toString() || DEFAULTS.fee,
+        counter: args.counter?.toString() || DEFAULTS.counter,
+        gas_limit: args.gas_limit?.toString() || DEFAULTS.gas_limit,
+        storage_limit: args.storage_limit?.toString() || DEFAULTS.storage_limit,
+        delegate: args.delegate
+    };
+}
 
-    // Sends Tezos from the user's address to another wallet or contract.
-    transaction(source: string, destination: string, mutezAmount: number, parameters?: any) {
-        return {
-            kind: 'transaction',
-            source,
-            destination,
-            amount: mutezAmount.toString(),
-            parameters
-        };
-    },
 
-    // Sends Tezos based tokens from the user's address to another wallet or contract.
-    tokenTransaction(source: string, destination: string, contract: string, amount: number, tokenID: number) {
-        const parameters: {[name: string]: any} = !tokenID
-            ? FA12_SCHEMA.transfer(source, destination, amount)
-            : FA20_SCHEMA.transfer(source, destination, tokenID, amount);
-        
-        return {
-            kind: 'transaction',
-            source,
-            destination: contract,
-            amount: '0',
-            parameters
-        };
-    },
+export interface TransactionArgs {
+    source: string;
+    fee?: string | number;
+    counter?: string | number;
+    gas_limit?: string | number;
+    storage_limit?: string | number;
+    amount: string | number;
+    destination: string;
+    parameters?: Record<string, any>;
+};
 
-    delegation(source: string, delegator?: string) {
-        return {
-            kind: 'delegation',
-            source,
-            delegate: delegator
-        };
-    }
+
+export interface Transaction {
+    kind: 'transaction';
+    source: string;
+    fee: string;
+    counter: string;
+    gas_limit: string;
+    storage_limit: string;
+    amount: string;
+    destination: string;
+    parameters?: Record<string, any>;
+};
+
+
+/**
+ * Sends Tezos from the user's address to another wallet or contract.
+ * @param source 
+ * @param destination 
+ * @param mutezAmount 
+ * @param parameters 
+ * @returns 
+ */
+export function transaction(args: TransactionArgs): Transaction {
+    return {
+        kind: 'transaction',
+        source: args.source,
+        fee: args.fee?.toString() || DEFAULTS.fee,
+        counter: args.counter?.toString() || DEFAULTS.counter,
+        gas_limit: args.gas_limit?.toString() || DEFAULTS.gas_limit,
+        storage_limit: args.storage_limit?.toString() || DEFAULTS.storage_limit,
+        amount: args.amount.toString(),
+        destination: args.destination,
+        parameters: args.parameters
+    };
+}
+
+
+export interface TokenTransactionArgs {
+    source: string;
+    fee?: string | number;
+    counter?: string | number;
+    gas_limit?: string | number;
+    storage_limit?: string | number;
+    amount: string | number;
+    destination: string;
+    contract: string;
+    tokenID?: string | number;
+};
+
+
+/**
+ * Sends Tezos based tokens from the user's address to another wallet or contract.
+ * @param source 
+ * @param recipient 
+ * @param contract 
+ * @param amount 
+ * @param tokenID 
+ * @returns 
+ */
+export function tokenTransaction(args: TokenTransactionArgs): Transaction {
+    const parameters: Record<string, any> = !args.tokenID
+        ? FA12_SCHEMA.transfer(args.source, args.destination, args.amount)
+        : FA20_SCHEMA.transfer(args.source, args.destination, args.tokenID, args.amount);
+    
+    return {
+        kind: 'transaction',
+        source: args.source,
+        fee: args.fee?.toString() || DEFAULTS.fee,
+        counter: args.counter?.toString() || DEFAULTS.counter,
+        gas_limit: args.gas_limit?.toString() || DEFAULTS.gas_limit,
+        storage_limit: args.storage_limit?.toString() || DEFAULTS.storage_limit,
+        amount: args.amount.toString(),
+        destination: args.contract,
+        parameters: parameters
+    };
 }

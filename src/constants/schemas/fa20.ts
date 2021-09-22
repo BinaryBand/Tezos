@@ -1,7 +1,7 @@
 const LAMBDA_ADDRESS = 'KT1LyHDYnML5eCuTEVCTynUpivwG6ns6khiG';
 
 
-export function transfer(source: string, destination: string, tokenID: number, amount: number) { 
+export function transfer(source: string, destination: string, tokenID: string | number, amount: string | number) { 
     return {
         entrypoint: "transfer",
         value: [{
@@ -27,7 +27,7 @@ export function transfer(source: string, destination: string, tokenID: number, a
 }
 
 
-export function balance_of(source: string, tokenID: number) {
+export function balance_of(source: string, tokenID: string | number) {
     return {
         entrypoint: 'balance_of',
         value: {

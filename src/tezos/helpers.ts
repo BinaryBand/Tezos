@@ -1,183 +1,122 @@
 import axios from 'axios';
 import { Buffer } from 'buffer';
 
-import explorer from './rpc-explorer';
-import base58 from '../encoders/base58';
-
+import * as operations from './operations';
+import * as explorer from './chain-explorer';
+import * as base58 from '../encoders/base58';
 import blake2b from '../cryptography/blake2b';
-import ed25519 from '../cryptography/ed25519';
-import { secp256k1, nistp256 } from '../cryptography/ellipticCurves';
+import * as ed25519 from '../cryptography/ed25519';
+import { secp256k1, nistp256 } from '../cryptography/elliptic-curves';
 
 import PREFIX from '../constants/prefix.json';
-const SIG = 'edsigtkpiSSschcaCt9pUVrpNPf7TTcgvgDEDD6NCEHMy8NNQJCGnMfLZzYoQj74yLjo9wx6MPVV29CvVzgi7qEcEUok3k7AuMg';
+const defaultRPC: string = 'https://mainnet.smartpy.io';
+const axiosConfig = { headers: { 'Content-type': 'application/json' }};
+const SIG: string = 'edsigtkpiSSschcaCt9pUVrpNPf7TTcgvgDEDD6NCEHMy8NNQJCGnMfLZzYoQj74yLjo9wx6MPVV29CvVzgi7qEcEUok3k7AuMg';
 
-type head = {
-    chain_id: string,
-    hash: string,
-    protocol: string
-};
-
-type constants = {
-    origination_size: string,
-    cost_per_byte: string,
-    minimal_block_delay: string
-};
+type Curve = 'ed25519' | 'secp256k1' | 'nistp256';
 
 
-function dryRun(contents: {[name: string]: string}[], rpc: string, head?: head, constants?: constants) {
-    return new Promise(async (resolve, reject) => {
-        head = head || await explorer.getHeader(rpc);
-        constants = constants || await explorer.getConstants(rpc);
+/**
+ * Run operation to estimate gas fees and storage limit.
+ * @param contents 
+ * @param rpc 
+ * @returns 
+ */
+export async function dryRun(batch: operations.Operation[], rpc: string = defaultRPC, header?: explorer.Header) {
+    header = header || await explorer.getHeader();
 
-        const data = {
-            chain_id: head.chain_id,
-            operation: {
-                branch: head.hash,
-                contents,
-                signature: SIG
-            }
-        };
-
-        // Run operation to estimate gas fees and storage limit.
-        return axios.post(`${rpc}/chains/main/blocks/head/helpers/scripts/run_operation`, JSON.stringify(data),
-            { headers: { 'Content-type': 'application/json' }}
-        )
-        .then((res) => resolve(res.data.contents))
-        .catch((res) => {
-            if (res.response && res.response.data) reject(new Error(res.response.data));
-            else reject(new Error(res));
-        });
-    });
-}
-
-
-function forgeOperation(contents: {[name: string]: string}[], rpc: string, head?: head): Promise<string> {
-    return new Promise(async (resolve, reject) => {
-        head = head || await explorer.getHeader(rpc);
-
-        const operation = {
-            branch: head.hash,
-            contents
-        };
-
-        return axios.post(`${rpc}/chains/main/blocks/head/helpers/forge/operations`,
-            JSON.stringify(operation), { headers: { 'Content-type': 'application/json' }}
-        )
-        .then((res) => resolve(res.data))
-        .catch((res) => {
-            if (res.response && res.response.data) reject(new Error(res.response.data));
-            else reject(new Error(res));
-        });
-    });
-}
-
-
-function signOperation(forgedBytes: string, privateKey: string) {
-    const out: {[name: string]: any} = {
-        edsk: {
-            prefix: PREFIX.ed25519.sig,
-            signDetached: ed25519.signDetached
-        },
-        spsk: {
-            prefix: PREFIX.secp256k1.sig,
-            signDetached: secp256k1.signDetached
-        },
-        p2sk: {
-            prefix: PREFIX.nistp256.sig,
-            signDetached: nistp256.signDetached
+    const data = {
+        chain_id: header.chain_id,
+        operation: {
+            branch: header.hash,
+            contents: batch,
+            signature: SIG
         }
     };
 
-    const sk: Uint8Array = base58.decode(privateKey).slice(4);
-
-    const payload: Uint8Array = Buffer.from(forgedBytes, 'hex');
-    const watermark: Uint8Array = Buffer.from([0x03]);
-    const bb: Uint8Array = Buffer.concat([watermark, payload]);
-    const bytesHash: Uint8Array = blake2b(bb, 32);
-
-    const prefix: string = privateKey.slice(0, 4);
-    const curve: { prefix: number[], signDetached: Function } = out[prefix];
-
-    const sigBytes: Uint8Array = curve.signDetached(bytesHash, sk);
-    return base58.encode(sigBytes, curve.prefix);
-}
-
-
-function validateOperation(contents: {[name: string]: string}[], signature: string, rpc: string='https://mainnet.smartpy.io', head?: head) {
-    return new Promise(async (resolve, reject) => {
-        head = head || await explorer.getHeader(rpc);
-
-        const operation = [{
-            protocol: head.protocol,
-            branch: head.hash,
-            contents,
-            signature
-        }];
-
-        axios.post(`${rpc}/chains/main/blocks/head/helpers/preapply/operations`,
-            JSON.stringify(operation), { headers: { 'Content-type': 'application/json' }}
-        )
-        .then((res) => {
-            resolve(res.data);
-        })
-        .catch((res) => {
-            if (res.response && res.response.data) reject(new Error(res.response.data));
-            else reject(new Error(res));
-        });
-    });
-}
-
-
-function injectOperation(signedBytes: string, rpc: string): Promise<string> {
-    return axios.post(`${rpc}/injection/operation`, JSON.stringify(signedBytes),
-        { headers: { 'Content-type': 'application/json' }}
-    )
-    .then((res) => res.data)
-    .catch((res) => {
-        if (res.response && res.response.data) throw(new Error(res.response.data));
-        else throw(Error(res));
-    });
-}
-
-
-function packData(payload: { data: any, type: any }, rpc: string) {
-    // let data = { data: { int: '0' }, type: { prim: 'nat' }};
-    // let data = { data: { string: 'tz1RAu5s9iCimy8bCK6GbmLxLyv5Nf7CZ8T1' }, type: { prim: 'address' }};
-    // let data = {
-    //     data: [
-    //         { string: 'tz1RAu5s9iCimy8bCK6GbmLxLyv5Nf7CZ8T1' },
-    //         { int: '36787' }
-    //     ],
-    //     type: {
-    //         prim: 'pair',
-    //         args: [
-    //             { prim: 'address' },
-    //             { prim: 'nat' }
-    //         ]
-    //     }
-    // };
-
-    return axios.post(`${rpc}/chains/main/blocks/head/helpers/scripts/pack_data`,
-        JSON.stringify(payload), { headers: { 'Content-type': 'application/json' }}
-    )
-    .then((res) => {
-        const packed: string = res.data.packed;
-        const hash: Uint8Array = blake2b(Buffer.from(packed, 'hex'), 32);
-        const prefix: number[] = PREFIX.expr;
-        return base58.encode(hash, prefix);
+    const url: string = new URL('chains/main/blocks/head/helpers/scripts/run_operation', rpc).href;
+    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => {
+        return res.data.contents;
     })
     .catch((res) => {
-        if (res.response && res.response.data) throw(new Error(res.response.data));
-        else throw(Error(res));
+        if (res.response && res.response.data) throw(res.response.data);
+        else throw(res);
     });
 }
 
 
-export default {
-    dryRun,
-    forgeOperation,
-    signOperation,
-    validateOperation,
-    injectOperation,
-    packData
-};
+export async function forgeOperation(contents: operations.Operation[], rpc: string = defaultRPC, header?: explorer.Header): Promise<string> {
+    header = header || await explorer.getHeader();
+
+    const data = {
+        branch: header.hash,
+        contents
+    };
+
+    const url: string = new URL('chains/main/blocks/head/helpers/forge/operations', rpc).href;
+    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => {
+        return res.data;
+    })
+    .catch((res): void => {
+        if (res.response && res.response.data) throw(res.response.data);
+        else throw(res);
+    });
+}
+
+
+export async function validateOperation(contents: operations.Operation[], signature: string, rpc: string = defaultRPC, header?: explorer.Header) {
+    header = header || await explorer.getHeader();
+
+    const data = [{
+        protocol: header.protocol,
+        branch: header.hash,
+        contents,
+        signature
+    }];
+
+    const url: string = new URL('chains/main/blocks/head/helpers/preapply/operations', rpc).href; 
+    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => {
+        return res.data;
+    })
+    .catch((res) => {
+        if (res.response && res.response.data) throw(res.response.data);
+        else throw(res);
+    });
+}
+
+
+export function injectOperation(signedBytes: string, rpc: string = defaultRPC): Promise<string> {
+    const url: string = new URL('injection/operation', rpc).href; 
+    return axios.post(url, JSON.stringify(signedBytes), axiosConfig).then((res) => {
+        return res.data;
+    })
+    .catch((res) => {
+        if (res.response && res.response.data) throw(res.response.data);
+        else throw(res);
+    });
+}
+
+
+export function signOperation(forgedOperation: string, sk: Uint8Array, curve: Curve = 'ed25519'): string {
+    const message: Uint8Array = Buffer.from(forgedOperation, 'hex');
+    const watermark: Uint8Array = new Uint8Array([0x03]);
+    const payload: Uint8Array = Buffer.concat([watermark, message]);
+    const bytesHash: Uint8Array = blake2b(payload, 32);
+
+    const prefix: Uint8Array = new Uint8Array(PREFIX[curve].sig);
+
+    let signatureBytes: Uint8Array;
+    switch (curve) {
+        case 'ed25519':
+            signatureBytes = ed25519.signDetached(bytesHash, sk);
+            return base58.encode(signatureBytes, prefix);
+        case 'secp256k1':
+            signatureBytes = secp256k1.signDetached(bytesHash, sk);
+            return base58.encode(signatureBytes, prefix);
+        case 'nistp256':
+            signatureBytes = nistp256.signDetached(bytesHash, sk);
+            return base58.encode(signatureBytes, prefix);
+        default:
+            throw('Invalid elliptic curve.');
+    }
+}

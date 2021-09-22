@@ -1,10 +1,8 @@
-import { SHA256, PBKDF2, algo, enc, lib } from 'crypto-js';
-import { Buffer } from 'buffer';
-
+import * as crypto from '../cryptography/crypto-wrapper';
 import WORD_LIST from '../constants/word-list.json';
 
 
-function bytesToBinary(bytes: number[]): string {
+function bytesToBinary(bytes: Array<number>): string {
     return bytes.map((x: number) => {
         return x.toString(2).padStart(8, '0');
     }).join('');
@@ -16,39 +14,35 @@ function binaryToByte(bin: string): number {
 }
 
 
-function deriveChecksumBits(entropyBuffer: any): string {
-    const CS: number = (entropyBuffer.length * 8) / 32;
-    const hash = SHA256(lib.WordArray.create(entropyBuffer));
-    const buffer: Buffer = Buffer.from(hash.toString(enc.Hex), 'hex');
-    return bytesToBinary(Array.from(buffer)).slice(0, CS);
+function deriveChecksumBits(entropyBuffer: Uint8Array): string {
+    const keySize: number = (entropyBuffer.length * 8) / 32;
+    const bytes: Uint8Array = crypto.createHash(entropyBuffer, 'sha256');
+    return bytesToBinary(Array.from(bytes)).slice(0, keySize);
 }
 
 
-export function generateMnemonic(entropy: any): string {
-    const entropyBits = bytesToBinary(Array.from(entropy));
-    const checksumBits = deriveChecksumBits(entropy);
+export function generateMnemonic(entropy: Uint8Array): string {
+    const entropyBits: string = bytesToBinary(Array.from(entropy));
+    const checksumBits: string = deriveChecksumBits(entropy);
 
     const bits: string = entropyBits + checksumBits;
 
-    const chunks: string[] = bits.match(/(.{1,11})/g)!;
-    return chunks!.map((binary: any) => {
+    const chunks: Array<string> = bits.match(/(.{1,11})/g)!;
+    return chunks!.map((binary: string): string => {
         return WORD_LIST[binaryToByte(binary)];
     }).join(' ');
 }
 
 
-export function mnemonicToSeed(mnemonic: string, password: string = ''): Buffer {
-    return Buffer.from(PBKDF2(mnemonic, 'mnemonic' + password, {
-        keySize: 16,
-        hasher: algo.SHA512,
-        iterations: 2048
-    }).toString(enc.Hex), 'hex');
+export function mnemonicToSeed(mnemonic: string, password: string = ''): Uint8Array {
+    return crypto.pbkdf2(mnemonic, password);
 }
 
 
-export function mnemonicToEntropy(mnemonic: string): string | null {
-    const words: string[] = mnemonic.split(' ');
-    const bits = words.map((word: string) => {
+export function mnemonicToEntropy(mnemonic: string): string | undefined {
+    const words: Array<string> = mnemonic.split(' ');
+
+    const bits: string = words.map((word: string): string => {
         const index: number = WORD_LIST.indexOf(word);
         return index.toString(2).padStart(11, '0');
     }).join('');
@@ -57,15 +51,21 @@ export function mnemonicToEntropy(mnemonic: string): string | null {
     const entropyBits: string = bits.slice(0, dividerIndex);
     const checksumBits: string = bits.slice(dividerIndex);
 
-    const entropyBytes: number[] = entropyBits.match(/(.{1,8})/g)!.map(binaryToByte);
+    const entropyBytes: Array<number> = entropyBits.match(/(.{1,8})/g)!.map(binaryToByte);
 
     // Mnemonic length must be divisible by 4.
-    if (entropyBytes.length % 4 !== 0) return null;
+    if (entropyBytes.length % 4 !== 0) {
+        throw(new Error('Mnemonic length must be divisible by 4.'));
+    }
 
     const entropy: Buffer = Buffer.from(entropyBytes);
     const newChecksum: string = deriveChecksumBits(entropy);
 
     // Mnemonic must have a valid checksum.
-    if (newChecksum !== checksumBits) return null;
+    if (newChecksum !== checksumBits) {
+        throw(new Error('Mnemonic must have a valid checksum.'));
+    }
+
+
     return entropy.toString('hex');
 }

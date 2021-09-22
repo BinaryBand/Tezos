@@ -1,7 +1,7 @@
 const LAMBDA_ADDRESS = 'KT1XBwFrcB3tnV91AsgcSbN3nVNrrg6SkX8d';
 
 
-export function transfer(source: string, destination: string, amount: number) { 
+export function transfer(source: string, destination: string, amount: string | number) { 
     return { 
         entrypoint: 'transfer',
         value: { 

@@ -90,8 +90,17 @@ export class Wallet {
         return base58.encode(this.addr, prefix);
     }
 
-    public async getBalance(): Promise<string> {
-        return (await explorer.getAccount(this.getAddress(), this.rpc)).balance;
+    public async getBalance(): Promise<number> {
+        const balance: string = (await explorer.getAccount(this.getAddress(), this.rpc)).balance;
+        return parseInt(balance, 10);
+    }
+
+    public async getSpendableBalance(destination: string): Promise<number> {
+        const balance: number = await this.getBalance();
+        const transaction: operations.Transaction = this.ops.transaction(destination, balance);
+        const batch: builder.OperationBatch = await this.buildOperationBatch([transaction]);
+        const operationCost: number = parseInt((await batch.getEstimates()).total, 10);
+        return balance - operationCost;
     }
 
     public ops = {
@@ -160,6 +169,9 @@ export class Wallet {
 
     return mnemonic;
 }
+
+
+export const mnemonicToEntropy = bip39.mnemonicToEntropy;
 
 
 interface Options {

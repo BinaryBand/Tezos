@@ -13,6 +13,18 @@ const defaultRPC: string = 'https://mainnet.smartpy.io';
 type Curve = 'ed25519' | 'secp256k1' | 'nistp256';
 
 
+export function validateAddress(address: string): boolean {
+    try {
+        const decodedAddress: Uint8Array = base58.decode(address);
+        return decodedAddress.length === 23 && address.slice(0, 2) === 'tz' &&
+            (address[2] === '1' || address[2] === '2' || address[2] === '3');
+    }
+    catch (_) {
+        return false;
+    }
+}
+
+
 /**
  * Returns the user's total balance in Mutez (1000000th of one Tezos).
  * @param address The string of characters that can send and receive cryptocurrency.
@@ -248,7 +260,7 @@ interface Options {
  * @param options Set password | elliptic curve | derivation path | RPC URL.
  * @returns Tezos wallet class.
  */
-export function importWallet(mnemonic: string, options: Options={}): Wallet {
+export function importWallet(mnemonic: string, options: Options = {}): Wallet {
     // Throw an error if mnemonic is invalid.
     bip39.mnemonicToEntropy(mnemonic);
 

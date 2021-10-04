@@ -1,4 +1,4 @@
-import { Wallet, createMnemonic, importWallet } from './src/index';
+import { Wallet, createMnemonic, importWallet, validateAddress } from './src/index';
 
 
 async function main(): Promise<void> {

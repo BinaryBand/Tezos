@@ -1,5 +1,6 @@
-node_modules
 .vscode
 dist
-experimental
-example.js
+node_modules
+/src/experimental
+.gitignore
+.npmignore

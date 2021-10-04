@@ -4,7 +4,7 @@ import * as operations from './operations';
 import * as explorer from './chain-explorer';
 import * as helpers from './helpers';
 import * as base58 from '../encoders/base58';
-import { Wallet, ops } from '../index';
+import { reveal } from '../index';
 
 const COST_PER_BYTE: number = 250;
 const GAS_BUFFER: number = 100;
@@ -18,13 +18,13 @@ const defaultRPC: string = 'https://mainnet.smartpy.io';
 type Curve = 'ed25519' | 'secp256k1' | 'nistp256';
 
 
-export interface Limits {
+interface Limits {
     gas_limit: string;
     storage_limit: string;
 };
 
 
-export async function estimateLimits(batch: operations.Operation[], rpc: string = defaultRPC, header?: explorer.Header): Promise<Limits[]> {
+async function estimateLimits(batch: operations.Operation[], rpc: string = defaultRPC, header?: explorer.Header): Promise<Limits[]> {
     const metadata = await helpers.dryRun(batch, rpc, header);
 
     return metadata.map((operation: Record<string, any>): Limits => {
@@ -56,10 +56,9 @@ export interface Estimates {
 
 export async function calculateFee(operations: operations.Operation[], tip: number = 100, rpc: string = defaultRPC, header?: explorer.Header): Promise<Estimates> {
     header = header || await explorer.getHeader(rpc);
-    tip = Math.max(MINIMAL_FEE, tip);
 
     // Calculate the operation size.
-    const forgedBytes: string = await helpers.forgeOperation(operations, undefined, header);
+    const forgedBytes: string = await helpers.forgeOperation(operations, defaultRPC, header);
     const operationSize: number = Buffer.from(forgedBytes, 'hex').length + SIGNATURE_LENGTH;
     
     // Calculate the total gas and storage limit requirements for this operation.
@@ -70,7 +69,7 @@ export async function calculateFee(operations: operations.Operation[], tip: numb
     });
 
     // fees >= (minimal_fees + minimal_nanotez_per_byte * size + minimal_nanotez_per_gas_unit * gas)
-    const fee: number = tip + MINIMAL_NANOTEZ_PER_BYTE * operationSize + Math.ceil(MINIMAL_NANOTEZ_PER_GAS_UNIT * totalGas);
+    const fee: number = Math.max(MINIMAL_FEE, tip) + MINIMAL_NANOTEZ_PER_BYTE * operationSize + Math.ceil(MINIMAL_NANOTEZ_PER_GAS_UNIT * totalGas);
 
     return {
         fee: fee.toString(),
@@ -101,7 +100,7 @@ export class OperationBatch {
     }
 
     private async signOperation(sk: Uint8Array, curve: Curve): Promise<string> {
-        const forgedBytes: string = this.forgedBytes || await this.forgeOperation()
+        const forgedBytes: string = this.forgedBytes || await this.forgeOperation();
         return helpers.signOperation(forgedBytes, sk, curve);
     }
 
@@ -115,29 +114,27 @@ export class OperationBatch {
 
     public async getSignature(secretKey: string): Promise<string> {
         let curve: Curve;
-        switch (secretKey.slice(0, 5)) {
-            case 'edsig':
+        switch (secretKey.slice(0, 4)) {
+            case 'edsk':
                 curve = 'ed25519';
                 break;
-            case 'spsig':
+            case 'spsk':
                 curve = 'secp256k1';
                 break;
-            case 'p2sig':
+            case 'p2sk':
                 curve = 'nistp256';
                 break;
             default:
-                throw('Invalid signature.');
+                throw('Invalid secret key.');
         }
 
-        const sk: Uint8Array = base58.decode(secretKey, 5);
+        const sk: Uint8Array = base58.decode(secretKey, 4);
         return this.signOperation(sk, curve);
     }
 }
 
 
-export async function buildOperationBatch(wallet: Wallet, contents: operations.Operation[], rpc: string = defaultRPC, tip: number = 100) {
-    const address: string = wallet.getAddress();
-
+export async function buildOperationBatch(contents: operations.Operation[], address: string, publicKey?: string, tip: number = 100, rpc: string = defaultRPC) {
     const chainResults: [explorer.Header, explorer.Account, string | undefined] = await Promise.all([
         explorer.getHeader(rpc),
         explorer.getAccount(address, rpc),
@@ -150,7 +147,7 @@ export async function buildOperationBatch(wallet: Wallet, contents: operations.O
     const managerKey: string | undefined = chainResults[2];
 
     // Add a reveal operation if this is the first operation from this wallet.
-    if (!managerKey) contents = [ops.reveal(address, wallet.getPublicKey()), ...contents];
+    if (!managerKey) contents = [reveal(address, publicKey!), ...contents];
 
     // Fill in counter value for each operation in batch.
     const counter: number = parseInt(account.counter);
@@ -161,10 +158,10 @@ export async function buildOperationBatch(wallet: Wallet, contents: operations.O
     // Retieve gas and storage limits for this operation batch.
     const limits: Limits[] = await estimateLimits(contents, rpc, header);
     contents = contents.map((operation: operations.Operation, index: number): operations.Operation => {
-        const limit: Limits = limits[index];
-        return { ...operation, ...limit };
+        return { ...operation, ...limits[index] };
     });
 
+    // Calculate fee and add it to the first operation in the batch.
     const estimates: Estimates = await calculateFee(contents, tip, rpc, header);
     contents[0].fee = estimates.fee;
 

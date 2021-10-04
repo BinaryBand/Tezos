@@ -2,7 +2,7 @@ import * as crypto from '../cryptography/crypto-wrapper';
 import WORD_LIST from '../constants/word-list.json';
 
 
-function bytesToBinary(bytes: Array<number>): string {
+function bytesToBinary(bytes: number[]): string {
     return bytes.map((x: number) => {
         return x.toString(2).padStart(8, '0');
     }).join('');
@@ -27,7 +27,7 @@ export function generateMnemonic(entropy: Uint8Array): string {
 
     const bits: string = entropyBits + checksumBits;
 
-    const chunks: Array<string> = bits.match(/(.{1,11})/g)!;
+    const chunks: string[] = bits.match(/(.{1,11})/g)!;
     return chunks!.map((binary: string): string => {
         return WORD_LIST[binaryToByte(binary)];
     }).join(' ');
@@ -40,7 +40,17 @@ export function mnemonicToSeed(mnemonic: string, password: string = ''): Uint8Ar
 
 
 export function mnemonicToEntropy(mnemonic: string): string | undefined {
-    const words: Array<string> = mnemonic.split(' ');
+    if (!mnemonic || mnemonic.length === 0) return undefined;
+
+    const words: string[] = mnemonic.split(' ');
+
+    // Mnemonic length must be divisible by 3.
+    if (words.length % 3 !== 0) return undefined;
+
+    words.forEach((word: string) => {
+        const index: number = WORD_LIST.indexOf(word);
+        if (index === -1) return undefined;
+    });
 
     const bits: string = words.map((word: string): string => {
         const index: number = WORD_LIST.indexOf(word);
@@ -50,21 +60,12 @@ export function mnemonicToEntropy(mnemonic: string): string | undefined {
     const dividerIndex: number = Math.floor(bits.length / 33) * 32;
     const entropyBits: string = bits.slice(0, dividerIndex);
     const checksumBits: string = bits.slice(dividerIndex);
-
-    const entropyBytes: Array<number> = entropyBits.match(/(.{1,8})/g)!.map(binaryToByte);
-
-    // Mnemonic length must be divisible by 4.
-    if (entropyBytes.length % 4 !== 0) {
-        throw(new Error('Mnemonic length must be divisible by 4.'));
-    }
-
+    const entropyBytes: number[] = entropyBits.match(/(.{1,8})/g)!.map(binaryToByte);
     const entropy: Buffer = Buffer.from(entropyBytes);
-    const newChecksum: string = deriveChecksumBits(entropy);
 
     // Mnemonic must have a valid checksum.
-    if (newChecksum !== checksumBits) {
-        throw(new Error('Mnemonic must have a valid checksum.'));
-    }
+    const newChecksum: string = deriveChecksumBits(entropy);
+    if (newChecksum !== checksumBits) return undefined;
 
 
     return entropy.toString('hex');

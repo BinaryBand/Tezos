@@ -33,13 +33,6 @@ export interface Reveal {
 };
 
 
-/**
- * Reveals the user's public key to the blockchain. This should be the first operation
- * performed on any new wallet.
- * @param source The user's public Tezos address.
- * @param publicKey 
- * @returns 
- */
 export function reveal(args: RevealArgs): Reveal {
     return {
         kind: 'reveal',
@@ -74,12 +67,6 @@ export interface Delegation {
 }
 
 
-/**
- * 
- * @param source 
- * @param delegate 
- * @returns 
- */
 export function delegation(args: DelegationArgs): Delegation {
     return {
         kind: 'delegation',
@@ -118,14 +105,6 @@ export interface Transaction {
 };
 
 
-/**
- * Sends Tezos from the user's address to another wallet or contract.
- * @param source 
- * @param destination 
- * @param mutezAmount 
- * @param parameters 
- * @returns 
- */
 export function transaction(args: TransactionArgs): Transaction {
     return {
         kind: 'transaction',
@@ -154,15 +133,6 @@ export interface TokenTransactionArgs {
 };
 
 
-/**
- * Sends Tezos based tokens from the user's address to another wallet or contract.
- * @param source 
- * @param recipient 
- * @param contract 
- * @param amount 
- * @param tokenID 
- * @returns 
- */
 export function tokenTransaction(args: TokenTransactionArgs): Transaction {
     const parameters: Record<string, any> = !args.tokenID
         ? FA12_SCHEMA.transfer(args.source, args.destination, args.amount)

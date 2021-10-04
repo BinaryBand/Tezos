@@ -1,4 +1,5 @@
 import * as XTZwallet from '../src/index';
+import { signOperation } from '../src/tezos/helpers';
 
 const mnemonic: string = 'same ask pool shaft clown setup shed master more credit defense useful';
 const dataStub: string = '768bc4176a249ace35451e678da895e7969a2d85d8e1b5b379303547eb56a3f56c014235b2494632f8950d04bafdbc91e9fc7ef8e7abb903f3fa1af00b00c0843d00003caf2c4c9899e0d2067559bc677f9ba4fe43484a00';

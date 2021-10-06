@@ -196,6 +196,7 @@ function pack(r: Uint8Array, p: Array<Float64Array>): void {
     r[31] ^= par25519(tx) << 7;
 }
 
+
 function reduce(r: Uint8Array): void {
     const x: Float64Array = new Float64Array(64);
     for (let i: number = 0; i < 64; i++) x[i] = r[i];

@@ -16,13 +16,41 @@ const SIG: string = 'edsigtkpiSSschcaCt9pUVrpNPf7TTcgvgDEDD6NCEHMy8NNQJCGnMfLZzY
 type Curve = 'ed25519' | 'secp256k1' | 'nistp256';
 
 
-/**
- * Run operation to estimate gas fees and storage limit.
- * @param contents 
- * @param rpc 
- * @returns 
- */
-export async function dryRun(batch: operations.Operation[], rpc: string = defaultRPC, header?: explorer.Header) {
+interface BalanceUpdate {
+    kind: string;
+    contract: string;
+    change: string;
+    origin: string;
+};
+
+
+interface ChainError {
+    kind: string;
+    id: string;
+    contract: string;
+};
+
+
+interface OperationResult {
+    status: 'applied' | 'failed';
+    balance_updates?: BalanceUpdate[];
+    consumed_gas?: string;
+    consumed_milligas?: string;
+    storage_limit?: string;
+    allocated_destination_contract?: boolean;
+    errors?: ChainError[];
+};
+
+
+interface OperationData {
+    metadata: {
+        operation_result: OperationResult;
+        internal_operation_results?: any[];
+    };
+};
+
+
+export async function runOperation(batch: operations.Operation[], rpc: string = defaultRPC, header?: explorer.Header): Promise<OperationData[]> {
     header = header || await explorer.getHeader();
 
     const data = {
@@ -35,13 +63,7 @@ export async function dryRun(batch: operations.Operation[], rpc: string = defaul
     };
 
     const url: string = new URL('chains/main/blocks/head/helpers/scripts/run_operation', rpc).href;
-    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => {
-        return res.data.contents;
-    })
-    .catch((res) => {
-        if (res.response && res.response.data) throw(res.response.data);
-        else throw(res);
-    });
+    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => res.data.contents);
 }
 
 
@@ -54,13 +76,7 @@ export async function forgeOperation(contents: operations.Operation[], rpc: stri
     };
 
     const url: string = new URL('chains/main/blocks/head/helpers/forge/operations', rpc).href;
-    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => {
-        return res.data;
-    })
-    .catch((res): void => {
-        if (res.response && res.response.data) throw(res.response.data);
-        else throw(res);
-    });
+    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => res.data);
 }
 
 
@@ -75,25 +91,13 @@ export async function validateOperation(contents: operations.Operation[], signat
     }];
 
     const url: string = new URL('chains/main/blocks/head/helpers/preapply/operations', rpc).href; 
-    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => {
-        return res.data;
-    })
-    .catch((res) => {
-        if (res.response && res.response.data) throw(res.response.data);
-        else throw(res);
-    });
+    return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => res.data);
 }
 
 
 export function injectOperation(signedBytes: string, rpc: string = defaultRPC): Promise<string> {
     const url: string = new URL('injection/operation', rpc).href; 
-    return axios.post(url, JSON.stringify(signedBytes), axiosConfig).then((res) => {
-        return res.data;
-    })
-    .catch((res) => {
-        if (res.response && res.response.data) throw(res.response.data);
-        else throw(res);
-    });
+    return axios.post(url, JSON.stringify(signedBytes), axiosConfig).then((res) => res.data);
 }
 
 

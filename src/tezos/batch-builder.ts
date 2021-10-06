@@ -19,7 +19,7 @@ type Curve = 'ed25519' | 'secp256k1' | 'nistp256';
 
 
 interface Limits {
-    balance_updates: BalanceUpdate[];
+    balance_updates?: BalanceUpdate[];
     gas_limit: string;
     storage_limit: string;
 };
@@ -37,7 +37,7 @@ function summarizeBalanceUpdates(limits: Limits[]): Record<string, number> {
     const summary: Record<string, number> = {};
 
     limits.forEach((limit: Limits) => {
-        limit.balance_updates.forEach((update: BalanceUpdate): void => {
+        limit.balance_updates?.forEach((update: BalanceUpdate): void => {
             summary[update.contract] = summary[update.contract] || 0;
             summary[update.contract] += parseInt(update.change);
         });
@@ -82,7 +82,7 @@ async function estimateLimits(batch: operations.Operation[], rpc: string = defau
         const errors: ChainError[] | undefined = operationResult.errors;
         if (errors) throw(errors);
 
-        const balance_updates: BalanceUpdate[] = operationResult.balance_updates!;
+        const balance_updates: BalanceUpdate[] | undefined = operationResult.balance_updates;
         const gasLimit: number = parseInt(operationResult.consumed_gas!, 10);
         let storageLimit: number = parseInt(operationResult.storage_limit || '0', 10);
         storageLimit += operationResult.allocated_destination_contract ? ORIGINATION_SIZE : 0;

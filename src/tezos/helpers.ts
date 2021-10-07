@@ -62,7 +62,7 @@ export async function runOperation(batch: operations.Operation[], rpc: string = 
         }
     };
 
-    const url: string = new URL('chains/main/blocks/head/helpers/scripts/run_operation', rpc).href;
+    const url: string = rpc + '/chains/main/blocks/head/helpers/scripts/run_operation';
     return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => res.data.contents);
 }
 
@@ -75,7 +75,7 @@ export async function forgeOperation(contents: operations.Operation[], rpc: stri
         contents
     };
 
-    const url: string = new URL('chains/main/blocks/head/helpers/forge/operations', rpc).href;
+    const url: string = rpc + '/chains/main/blocks/head/helpers/forge/operations';
     return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => res.data);
 }
 
@@ -90,13 +90,13 @@ export async function validateOperation(contents: operations.Operation[], signat
         signature
     }];
 
-    const url: string = new URL('chains/main/blocks/head/helpers/preapply/operations', rpc).href; 
+    const url: string = rpc + '/chains/main/blocks/head/helpers/preapply/operations';
     return axios.post(url, JSON.stringify(data), axiosConfig).then((res) => res.data);
 }
 
 
 export function injectOperation(signedBytes: string, rpc: string = defaultRPC): Promise<string> {
-    const url: string = new URL('injection/operation', rpc).href; 
+    const url: string = rpc + '/injection/operation'; 
     return axios.post(url, JSON.stringify(signedBytes), axiosConfig).then((res) => res.data);
 }
 

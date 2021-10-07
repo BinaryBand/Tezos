@@ -1,3 +1,5 @@
+import { Buffer } from 'buffer';
+
 import * as crypto from '../cryptography/crypto-wrapper';
 import WORD_LIST from '../constants/word-list.json';
 

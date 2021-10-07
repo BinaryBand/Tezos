@@ -1,5 +1,4 @@
 import axios from 'axios';
-import path from 'path';
 
 const defaultRPC: string = 'https://mainnet.smartpy.io';
 

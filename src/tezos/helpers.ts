@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { Buffer } from 'buffer';
 
+import blake2b from '../cryptography/blake2b';
 import * as operations from './operations';
 import * as explorer from './chain-explorer';
 import * as base58 from '../encoders/base58';
-import blake2b from '../cryptography/blake2b';
 import * as ed25519 from '../cryptography/ed25519';
 import { secp256k1, nistp256 } from '../cryptography/elliptic-curves';
 
